@@ -92,10 +92,10 @@ const getAllReservations = function (guest_id, limit = 10) {
   GROUP BY properties.id, reservations.id
   ORDER BY reservations.start_date
   LIMIT $2;`
-  let values = [guest_id, limit]
+  let queryParams = [guest_id, limit]
 
   return pool
-    .query(querySting, values)
+    .query(querySting, queryParams)
     .then((result) => result.rows)
     .catch((err) => {
       console.log(err.message);
@@ -115,9 +115,57 @@ exports.getAllReservations = getAllReservations;
 
 
 const getAllProperties = (options, limit = 10) => {
+
+  //1 - Setup an array to hold any parameters that may be available for the query.
+  const queryParams = [];
+  //2 - Start the query with all information that comes before the WHERE clause.
+  let queryString = `
+  SELECT properties.*, AVG(property_reviews.rating) AS average_rating
+  FROM properties
+  JOIN property_reviews ON properties.id = property_id
+  WHERE 1=1 
+  `;
+
+
+  // if a city has been passed in as an option - Add the city to the params array
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    queryString += `AND city LIKE $${queryParams.length} \n`;
+  }
+
+  // If  minimum_price_per_night passed in as an option - Add the owner to the params array
+  if (options.minimum_price_per_night) {
+    queryParams.push(options.minimum_price_per_night * 100);
+    queryString += `AND cost_per_night >= $${queryParams.length} `;
+  }
+
+  if (options.maximum_price_per_night) {
+    queryParams.push(options.maximum_price_per_night * 100);
+    queryString += `AND cost_per_night <= $${queryParams.length} `;
+  }
+
+  queryString += `GROUP BY properties.id\n`;
+
+  if (options.minimum_rating) {
+    queryParams.push(options.minimum_rating);
+    queryString += `HAVING avg(rating) >= $${queryParams.length}\n`;
+  }
+
+
+  //4 -Add any query that comes after the WHERE clause.
+  queryParams.push(limit);
+  queryString += `
+  ORDER BY cost_per_night
+  LIMIT $${queryParams.length};
+  `;
+  //5 - Console log everything just to make sure we've done it right.
+  console.log(queryString, queryParams);
+  //6 - Run the query
   return pool
-    .query(`SELECT * FROM properties LIMIT $1; `, [limit])
-    .then((result) => result.rows)
+    .query(queryString, queryParams)
+    .then((result) => {
+      return result.rows;
+    })
     .catch((err) => {
       console.log(err.message);
     });
