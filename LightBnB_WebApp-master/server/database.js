@@ -133,19 +133,18 @@ const getAllProperties = (options, limit = 10) => {
   WHERE 1=1 
   `;
 
-
   // if a city has been passed in as an option - Add the city to the params array
   if (options.city) {
     queryParams.push(`%${options.city}%`);
     queryString += `AND city LIKE $${queryParams.length} \n`;
   }
 
-  // If  minimum_price_per_night passed in as an option - Add the owner to the params array
+  // If  minimum_price_per_night passed in as an option - Add the minimum_price_per_night to the params array
   if (options.minimum_price_per_night) {
     queryParams.push(options.minimum_price_per_night * 100);
     queryString += `AND cost_per_night >= $${queryParams.length} `;
   }
-
+  // If  maximum_price_per_night passed in as an option - Add the maximum_price_per_night to the params array
   if (options.maximum_price_per_night) {
     queryParams.push(options.maximum_price_per_night * 100);
     queryString += `AND cost_per_night <= $${queryParams.length} `;
@@ -158,8 +157,6 @@ const getAllProperties = (options, limit = 10) => {
     queryString += `HAVING avg(rating) >= $${queryParams.length}\n`;
   }
 
-
-  //4 -Add any query that comes after the WHERE clause.
   queryParams.push(limit);
   queryString += `
   ORDER BY cost_per_night
